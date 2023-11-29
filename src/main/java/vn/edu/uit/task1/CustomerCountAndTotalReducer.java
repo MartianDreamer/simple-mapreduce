@@ -4,31 +4,34 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
-public class CustomerCountAndTotalReducer extends Reducer<Text, CustomerCountAndCost, Text, Text> {
+public class CustomerCountAndTotalReducer extends Reducer<Text, Text, Text, Text> {
 
     private double maxCost = -1;
     private String maxMonth;
 
 
     @Override
-    protected void reduce(Text key, Iterable<CustomerCountAndCost> values, Reducer<Text, CustomerCountAndCost, Text, Text>.Context context) throws IOException, InterruptedException {
-        int customerCount = 0;
+    protected void reduce(Text key, Iterable<Text> values, Reducer<Text, Text, Text, Text>.Context context) throws IOException, InterruptedException {
+        Set<String> customerIds = new HashSet<>();
         double cost = 0;
-        for (CustomerCountAndCost value : values) {
-            customerCount += value.customerCount();
-            cost += value.cost();
+        for (Text value : values) {
+            String[] parts = value.toString().split(",");
+            customerIds.add(parts[0]);
+            cost += Double.parseDouble(parts[1]);
 
         }
         if (maxCost < cost) {
             maxMonth = key.toString();
             maxCost = cost;
         }
-        context.write(key, new Text(customerCount + "\t" + cost));
+        context.write(key, new Text(customerIds.size() + "\t" + cost));
     }
 
     @Override
-    protected void cleanup(Reducer<Text, CustomerCountAndCost, Text, Text>.Context context) throws IOException, InterruptedException {
+    protected void cleanup(Reducer<Text, Text, Text, Text>.Context context) throws IOException, InterruptedException {
         context.write(new Text(maxMonth), new Text(" is the month with highest cost (" + maxCost + ")"));
     }
 }
